@@ -2,6 +2,7 @@ import express from "express";
 import cors from "cors";
 import "dotenv/config";
 import connectDB from "./config/db.js";
+import { clerkWebhook } from "./controllers/webhooks.js";
 
 // initialize express
 const app = express();
@@ -16,7 +17,7 @@ app.use(express.urlencoded({ extended: true }));
 app.get("/", (req, res) => {
   res.send("API IS WORKING");
 });
-
+app.post("/webhooks", clerkWebhook);
 // start server
 const PORT = process.env.PORT || 8000;
 app.listen(PORT, () => {
