@@ -1,22 +1,61 @@
-import { useState } from "react";
+import { useContext, useState } from "react";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import { assets, jobsApplied } from "../assets/assets";
 import moment from "moment";
+import { AppContext } from "../context/AppContext";
+import { useAuth, useUser } from "@clerk/clerk-react";
+import axios from "axios";
+import { toast } from "react-toastify";
 function Applications() {
   const [isEdit, setIsEdit] = useState(false);
   const [resume, setResume] = useState(null);
+  const { backendUrl, userData, userApplications, fetchUserData } =
+    useContext(AppContext);
+  const { user } = useUser();
+  const { getToken } = useAuth();
+  const updateResume = async () => {
+    const formData = new FormData();
+    formData.append("resume", resume);
+    try {
+      const formData = new FormData();
+      formData.append("resume", resume);
+      const token = await getToken();
+
+      const { data } = await axios.post(
+        `${backendUrl}/api/users/update-resume`,
+        formData,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+      if (data.success) {
+        toast.success("Resume updated successfully");
+        await fetchUserData();
+      } else {
+        toast.error("Failed to update resume");
+      }
+    } catch (error) {
+      console.error("Error updating resume:", error);
+      toast.error("Failed to update resume");
+    }
+    setIsEdit(false);
+    setResume(null);
+  };
+
   return (
     <>
       <Navbar />
       <div className="container px-4 min-h-[65vh] 2xl:px-20 mx-auto my-10">
         <h2 className="text-xl font-semibold">Your Resume</h2>
         <div className="flex gap-2 mb-6 mt-3">
-          {isEdit ? (
+          {isEdit || (userData && userData.resume === "") ? (
             <>
               <label htmlFor="resumeUpload" className="flex items-center">
                 <p className="bg-blue-100 text-blue-600 px-4 py-2 rounded-lg mr-2">
-                  Select Resume
+                  {resume ? resume.name : "Upload Resume"}
                 </p>
                 <input
                   type="file"
@@ -32,7 +71,7 @@ function Applications() {
                 />
               </label>
               <button
-                onClick={() => setIsEdit(false)}
+                onClick={updateResume}
                 className="bg-green-100 border border-green-400 rounded-lg px-4 py-2"
               >
                 Save
@@ -71,23 +110,24 @@ function Applications() {
             </tr>
           </thead>
           <tbody>
-            {jobsApplied.map((job, index) =>
+            {userApplications.map((job, index) =>
               true ? (
-                <tr key={index}>
+                <tr key={job._id}>
                   <td className="py-3 px-4 flex items-center gap-2 border-b">
-                    <img className="2-8 h-8" src={job.logo} alt="" />
+                    <img className="2-8 h-8" src={job.companyId.image} alt="" />
+                    {job.companyId.name}
                   </td>
-                  <td className="py-2 px-4 border-b">{job.title}</td>
-                  <td className="py-2 px-4 border-b">{job.location}</td>
+                  <td className="py-2 px-4 border-b">{job.jobId.title}</td>
+                  <td className="py-2 px-4 border-b">{job.jobId.location}</td>
                   <td className="py-2 px-4 border-b">
                     {moment(job.date).format("ll")}
                   </td>
                   <td className="py-2 px-4 border-b">
                     <span
                       className={`${
-                        job.status === "Accepted"
+                        job.status === "accept"
                           ? "bg-green-100"
-                          : job.status === "Rejected"
+                          : job.status === "reject"
                           ? "bg-red-100"
                           : "bg-blue-100"
                       } px-4 py-1.5 rounded`}
